@@ -27,7 +27,11 @@ def scrape_agco():
         response.raise_for_status()
 
         ajax_chunks = response.json()
-        html_payloads = [chunk["data"] for chunk in ajax_chunks if isinstance(chunk, dict) and "data" in chunk]
+        html_payloads = [
+            chunk["data"]
+            for chunk in ajax_chunks
+            if isinstance(chunk, dict) and isinstance(chunk.get("data"), str)
+        ]
         if not html_payloads:
             print("❌ No HTML chunks found in AJAX response.")
             sys.exit(1)
