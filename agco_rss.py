@@ -14,21 +14,25 @@ def scrape_agco():
             page.goto("https://www.agco.ca/en/general/news", timeout=60000)
 
             print("🎯 Selecting 'Lottery and Gaming' from dropdown...")
-            page.select_option('select[name=\"field_line_of_business_target_id\"]', label="Lottery and Gaming")
+            page.select_option('select[name="field_line_of_business_target_id"]', label="Lottery and Gaming")
 
-            print("🔍 Clicking 'Search' button...")
+            print("🔍 Clicking 'Search' button and watching for page change...")
+            content_before = page.content()
             page.click("input#edit-submit-news")
 
-            print("⏳ Waiting for filtered results to appear...")
-            page.wait_for_selector("div.views-row", timeout=30000)
+            page.wait_for_function(
+                """(previous) => document.documentElement.innerHTML !== previous""",
+                arg=content_before,
+                timeout=30000
+            )
 
-            print("✅ Filtered results loaded, extracting HTML...")
+            print("✅ Content changed, extracting HTML...")
             html = page.content()
             browser.close()
             return html
 
     except PlaywrightTimeout:
-        print("❌ Timeout while waiting for filtered news items.")
+        print("❌ Timeout while waiting for filtered results to change.")
         sys.exit(1)
     except Exception as e:
         print(f"❌ Unexpected error during scraping: {e}")
@@ -39,7 +43,7 @@ def parse_feed(html: str):
         soup = BeautifulSoup(html, "html.parser")
         items = soup.select("div.views-row")
         if not items:
-            print("⚠️ No news items found — check filter or page structure.")
+            print("⚠️ No news items found after filter — possible issue with form or selector.")
             sys.exit(1)
 
         fg = FeedGenerator()
