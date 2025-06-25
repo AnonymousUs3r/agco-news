@@ -13,29 +13,48 @@ def scrape_agco():
             print("🌐 Navigating to AGCO news page...")
             page.goto("https://www.agco.ca/en/general/news", timeout=60000)
 
+            print("🔎 Checking for 'Line of Business' dropdown...")
+            lob_exists = page.query_selector('select[name="field_line_of_business_target_id"]')
+            if not lob_exists:
+                print("❌ 'Line of Business' dropdown not found.")
+                sys.exit(1)
+            print("✅ 'Line of Business' dropdown found.")
+
             print("🎯 Selecting 'Lottery and Gaming' from dropdown...")
             page.select_option('select[name="field_line_of_business_target_id"]', label="Lottery and Gaming")
 
-            print("🔍 Clicking 'Search' button and watching for page change...")
-            content_before = page.content()
-            page.click("input#edit-submit-news")
-
-            page.wait_for_function(
-                """(previous) => document.documentElement.innerHTML !== previous""",
-                arg=content_before,
-                timeout=30000
+            selected_value = page.eval_on_selector(
+                'select[name="field_line_of_business_target_id"]',
+                'el => el.options[el.selectedIndex].textContent.trim()'
             )
+            if selected_value != "Lottery and Gaming":
+                print(f"❌ Failed to select Line of Business — selected: {selected_value}")
+                sys.exit(1)
+            print(f"✅ Line of Business set to: {selected_value}")
 
-            print("✅ Content changed, extracting HTML...")
+            print("🔎 Checking for 'Search' button...")
+            search_button = page.query_selector('input#edit-submit-news')
+            if not search_button:
+                print("❌ 'Search' button not found.")
+                sys.exit(1)
+            print("✅ 'Search' button found.")
+
+            print("🖱️ Clicking 'Search' button via script...")
+            page.evaluate("document.querySelector('input#edit-submit-news').click()")
+
+            print("⏳ Waiting for filtered results to appear...")
+            page.wait_for_selector("div.views-row", timeout=30000)
+
+            print("✅ Results loaded successfully.")
             html = page.content()
             browser.close()
             return html
 
     except PlaywrightTimeout:
-        print("❌ Timeout while waiting for filtered results to change.")
+        print("❌ Timeout while waiting for filtered results.")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Unexpected error during scraping: {e}")
+        print(f"❌ Scraper error: {e}")
         sys.exit(1)
 
 def parse_feed(html: str):
