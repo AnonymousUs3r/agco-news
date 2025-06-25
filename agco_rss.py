@@ -20,7 +20,7 @@ def scrape_agco():
             page.click("input#edit-submit-news")
 
             print("⏳ Waiting for filtered results to appear...")
-            page.wait_for_selector("div.views-row", timeout=15000)
+            page.wait_for_selector("div.views-row", timeout=30000)
 
             print("✅ Filtered results loaded, extracting HTML...")
             html = page.content()
