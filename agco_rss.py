@@ -26,17 +26,21 @@ def scrape_agco():
         response = requests.get(URL, params=PARAMS, timeout=15)
         response.raise_for_status()
 
-        ajax_chunks = response.json()
-        html_payloads = [
-            chunk["data"]
-            for chunk in ajax_chunks
-            if isinstance(chunk, dict) and isinstance(chunk.get("data"), str)
-        ]
-        if not html_payloads:
-            print("❌ No HTML chunks found in AJAX response.")
+        chunks = response.json()
+        html_fragment = next(
+            (chunk["data"] for chunk in chunks
+             if isinstance(chunk, dict) and
+                chunk.get("command") == "insert" and
+                isinstance(chunk.get("data"), str) and
+                "<div" in chunk["data"]),
+            None
+        )
+
+        if not html_fragment:
+            print("❌ Could not find insertable HTML content in AJAX response.")
             sys.exit(1)
 
-        soup = BeautifulSoup("".join(html_payloads), "html.parser")
+        soup = BeautifulSoup(html_fragment, "html.parser")
         return soup
 
     except Exception as e:
@@ -44,7 +48,7 @@ def scrape_agco():
         sys.exit(1)
 
 def parse_feed(soup):
-    items = soup.select("div.views-row")
+    items = soup.select("div.border-t-2")
     if not items:
         print("⚠️ No filtered news items found.")
         sys.exit(1)
@@ -57,11 +61,10 @@ def parse_feed(soup):
     fg.language("en")
 
     for item in items:
-        title_tag = item.find("h3")
-        link_tag = title_tag.find("a") if title_tag else None
-        date_tag = item.find("span", class_="date-display-single")
+        link_tag = item.select_one("h5 a")
+        date_tag = item.select_one("time[datetime]")
 
-        if not (title_tag and link_tag and date_tag):
+        if not (link_tag and date_tag):
             continue
 
         title = link_tag.get_text(strip=True)
