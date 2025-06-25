@@ -13,39 +13,38 @@ def scrape_agco():
             print("🌐 Navigating to AGCO news page...")
             page.goto("https://www.agco.ca/en/general/news", timeout=60000)
 
-            print("🔎 Checking for 'Line of Business' dropdown...")
-            lob_exists = page.query_selector('select[name="field_line_of_business_target_id"]')
-            if not lob_exists:
-                print("❌ 'Line of Business' dropdown not found.")
-                sys.exit(1)
-            print("✅ 'Line of Business' dropdown found.")
+            print("⏳ Waiting for 'Line of Business' dropdown...")
+            page.wait_for_selector('select[name="field_line_of_business"]', timeout=10000)
 
-            print("🎯 Selecting 'Lottery and Gaming' from dropdown...")
-            page.select_option('select[name="field_line_of_business_target_id"]', label="Lottery and Gaming")
+            print("✅ Dropdown found — selecting 'Lottery and Gaming' by value...")
+            page.select_option('select[name="field_line_of_business"]', value="2091")
 
             selected_value = page.eval_on_selector(
-                'select[name="field_line_of_business_target_id"]',
+                'select[name="field_line_of_business"]',
                 'el => el.options[el.selectedIndex].textContent.trim()'
             )
             if selected_value != "Lottery and Gaming":
-                print(f"❌ Failed to select Line of Business — selected: {selected_value}")
+                print(f"❌ Failed to select correct option — got: {selected_value}")
                 sys.exit(1)
-            print(f"✅ Line of Business set to: {selected_value}")
+            print(f"🎯 Successfully selected: {selected_value}")
 
-            print("🔎 Checking for 'Search' button...")
-            search_button = page.query_selector('input#edit-submit-news')
+            print("🔎 Checking for dynamic 'Search' button...")
+            search_button = page.query_selector('input[data-drupal-selector^="edit-submit-search-news"]')
             if not search_button:
                 print("❌ 'Search' button not found.")
                 sys.exit(1)
             print("✅ 'Search' button found.")
 
-            print("🖱️ Clicking 'Search' button via script...")
-            page.evaluate("document.querySelector('input#edit-submit-news').click()")
+            print("🖱️ Clicking 'Search' via script...")
+            page.evaluate("""() => {
+                const btn = document.querySelector('input[data-drupal-selector^="edit-submit-search-news"]');
+                if (btn) btn.click();
+            }""")
 
             print("⏳ Waiting for filtered results to appear...")
             page.wait_for_selector("div.views-row", timeout=30000)
 
-            print("✅ Results loaded successfully.")
+            print("✅ Results loaded. Extracting content...")
             html = page.content()
             browser.close()
             return html
