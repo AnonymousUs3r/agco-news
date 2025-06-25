@@ -16,41 +16,52 @@ def scrape_agco():
             print("⏳ Waiting for 'Line of Business' dropdown...")
             page.wait_for_selector('select[name="field_line_of_business"]', timeout=10000)
 
-            print("✅ Dropdown found — selecting 'Lottery and Gaming' by value...")
+            print("✅ Dropdown found — selecting 'Lottery and Gaming'...")
             page.select_option('select[name="field_line_of_business"]', value="2091")
 
-            selected_value = page.eval_on_selector(
+            selected = page.eval_on_selector(
                 'select[name="field_line_of_business"]',
                 'el => el.options[el.selectedIndex].textContent.trim()'
             )
-            if selected_value != "Lottery and Gaming":
-                print(f"❌ Failed to select correct option — got: {selected_value}")
+            if selected != "Lottery and Gaming":
+                print(f"❌ Selection failed — got: {selected}")
                 sys.exit(1)
-            print(f"🎯 Successfully selected: {selected_value}")
+            print(f"🎯 Successfully selected: {selected}")
 
-            print("🔎 Checking for dynamic 'Search' button...")
-            search_button = page.query_selector('input[data-drupal-selector^="edit-submit-search-news"]')
-            if not search_button:
+            print("🔍 Locating dynamic 'Search' button...")
+            search_btn = page.query_selector('input[data-drupal-selector^="edit-submit-search-news"]')
+            if not search_btn:
                 print("❌ 'Search' button not found.")
                 sys.exit(1)
             print("✅ 'Search' button found.")
 
-            print("🖱️ Clicking 'Search' via script...")
+            print("🧪 Capturing results container before filtering...")
+            container_selector = "div.view-content"
+            initial_content = page.inner_html(container_selector)
+
+            print("🖱️ Clicking 'Search'...")
             page.evaluate("""() => {
                 const btn = document.querySelector('input[data-drupal-selector^="edit-submit-search-news"]');
                 if (btn) btn.click();
             }""")
 
-            print("⏳ Waiting for filtered results to appear...")
-            page.wait_for_selector("div.views-row", timeout=30000)
+            print("⏳ Waiting for results container to change...")
+            page.wait_for_function(
+                """([sel, html]) => {
+                    const curr = document.querySelector(sel)?.innerHTML ?? '';
+                    return curr !== html;
+                }""",
+                arg=[container_selector, initial_content],
+                timeout=30000
+            )
 
-            print("✅ Results loaded. Extracting content...")
+            print("✅ Filtered results loaded. Extracting page HTML...")
             html = page.content()
             browser.close()
             return html
 
     except PlaywrightTimeout:
-        print("❌ Timeout while waiting for filtered results.")
+        print("❌ Timeout: Filtered results did not change.")
         sys.exit(1)
     except Exception as e:
         print(f"❌ Scraper error: {e}")
@@ -61,7 +72,7 @@ def parse_feed(html: str):
         soup = BeautifulSoup(html, "html.parser")
         items = soup.select("div.views-row")
         if not items:
-            print("⚠️ No news items found after filter — possible issue with form or selector.")
+            print("⚠️ No news items found after filtering.")
             sys.exit(1)
 
         fg = FeedGenerator()
@@ -88,7 +99,7 @@ def parse_feed(html: str):
                 dt = datetime.strptime(date_text, "%B %d, %Y")
                 pub_date = datetime(dt.year, dt.month, dt.day, 23, 59, 0, tzinfo=timezone.utc)
             except Exception as e:
-                print(f"⚠️ Could not parse date for: {title} — {e}")
+                print(f"⚠️ Date parse issue for: {title} — {e}")
                 pub_date = datetime.now(timezone.utc)
 
             guid = hashlib.md5((title + full_link).encode("utf-8")).hexdigest()
@@ -107,7 +118,7 @@ def parse_feed(html: str):
         print("📄 Saved AGCO RSS to agco_feed.xml")
 
     except Exception as e:
-        print(f"❌ Error during feed generation: {e}")
+        print(f"❌ Feed generation error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
