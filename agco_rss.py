@@ -12,7 +12,6 @@ PARAMS = {
     "keys": "",
     "field_news_type": "All",
     "field_line_of_business": "2091",  # Lottery and Gaming
-    "sort_bef_combine": "field_published_date_DESC",
     "view_name": "search_news",
     "view_display_id": "block_1",
     "view_path": "/node/376811",
@@ -36,8 +35,6 @@ def scrape_agco():
                 print(f"🔍 Chunk {i} — command: insert — data length: {len(data)}")
                 if "<div" in data:
                     print(f"✅ Found usable HTML in chunk {i}")
-                    print("🔎 Dumping HTML for inspection:\n")
-                    print(data)  # This is the raw HTML string
                     soup = BeautifulSoup(data, "html.parser")
                     return soup
 
