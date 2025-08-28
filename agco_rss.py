@@ -27,21 +27,20 @@ def scrape_agco():
         response.raise_for_status()
 
         chunks = response.json()
-        html_fragment = next(
-            (chunk["data"] for chunk in chunks
-             if isinstance(chunk, dict) and
-                chunk.get("command") == "insert" and
-                isinstance(chunk.get("data"), str) and
-                "<div" in chunk["data"]),
-            None
-        )
+        print(f"📦 Received {len(chunks)} chunks from AJAX response.")
 
-        if not html_fragment:
-            print("❌ Could not find insertable HTML content in AJAX response.")
-            sys.exit(1)
+        for i, chunk in enumerate(chunks):
+            command = chunk.get("command")
+            data = chunk.get("data")
+            if command == "insert" and isinstance(data, str):
+                print(f"🔍 Chunk {i} — command: insert — data length: {len(data)}")
+                if "<div" in data:
+                    print(f"✅ Found usable HTML in chunk {i}")
+                    soup = BeautifulSoup(data, "html.parser")
+                    return soup
 
-        soup = BeautifulSoup(html_fragment, "html.parser")
-        return soup
+        print("❌ No usable HTML found in any 'insert' command chunks.")
+        sys.exit(1)
 
     except Exception as e:
         print(f"❌ Failed to fetch AGCO news: {e}")
