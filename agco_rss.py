@@ -36,6 +36,8 @@ def scrape_agco():
                 print(f"🔍 Chunk {i} — command: insert — data length: {len(data)}")
                 if "<div" in data:
                     print(f"✅ Found usable HTML in chunk {i}")
+                    print("🔎 Dumping HTML for inspection:\n")
+                    print(data)  # This is the raw HTML string
                     soup = BeautifulSoup(data, "html.parser")
                     return soup
 
