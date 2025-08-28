@@ -46,8 +46,23 @@ def scrape_agco():
         print(f"❌ Failed to fetch AGCO news: {e}")
         sys.exit(1)
 
+def extract_news_items(soup):
+    selectors = [
+        "div.border-t-2",
+        "div.views-row",
+        "div.node-news",
+        "article",
+    ]
+    for selector in selectors:
+        items = soup.select(selector)
+        if items:
+            print(f"✅ Found {len(items)} items using selector: {selector}")
+            return items
+    print("⚠️ No news items found using fallback selectors.")
+    return []
+
 def parse_feed(soup):
-    items = soup.select("div.border-t-2")
+    items = extract_news_items(soup)
     if not items:
         print("⚠️ No filtered news items found.")
         sys.exit(1)
@@ -60,7 +75,7 @@ def parse_feed(soup):
     fg.language("en")
 
     for item in items:
-        link_tag = item.select_one("h5 a")
+        link_tag = item.select_one("h5 a, h3 a, a[href*='/node/']")
         date_tag = item.select_one("time[datetime]")
 
         if not (link_tag and date_tag):
